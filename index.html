@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homework Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #1a202c;
+            color: #cbd5e0;
+        }
+
+        table {
+            border: 1px solid #4a5568;
+        }
+
+        th,
+        td {
+            border: 1px solid #4a5568;
+        }
+
+        input {
+            border: 1px solid #4a5568;
+            background-color: #2d3748;
+            color: #cbd5e0;
+        }
+
+        .hover-effect:hover {
+            background-color: #2d3748;
+            transition: background-color 0.3s ease;
+        }
+
+        .modal-animation {
+            animation: fadeIn 0.5s forwards;
+        }
+
+        .modal-fade-out {
+            animation: fadeOut 0.5s forwards;
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
+        }
+
+
+        .snackbar {
+            visibility: hidden;
+            min-width: 250px;
+            margin-left: -125px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 2px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1;
+            left: 50%;
+            top: -100px;
+            /* Start above the screen */
+            font-size: 17px;
+            opacity: 0;
+            transition: top 0.5s, opacity 0.5s;
+        }
+
+        button {
+            transition: background-color 0.3s ease;
+            /* Smooth transition for both hover and default states */
+        }
+
+        button:hover {
+            background-color: #4a5568;
+            /* Slightly darker */
+        }
+
+
+        .snackbar.show {
+            visibility: visible;
+            top: 30px;
+            /* Move down to make it visible */
+            opacity: 1;
+            transition: top 0.5s, opacity 0.5s;
+        }
+
+        .snackbar.hide {
+            top: -100px;
+            /* Move up to disappear */
+            opacity: 0;
+            transition: top 0.5s, opacity 0.5s;
+        }
+
+
+        @keyframes fadeInOut {
+
+            0%,
+            100% {
+                opacity: 0;
+            }
+
+            10%,
+            90% {
+                opacity: 1;
+            }
+        }
+    </style>
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCoBuXy-vfkWwqKwREwZBnY97Z4MFnGFRI",
+            authDomain: "schedule-28477.firebaseapp.com",
+            projectId: "schedule-28477",
+            storageBucket: "schedule-28477.appspot.com",
+            messagingSenderId: "1060142868144",
+            appId: "1:1060142868144:web:91e842eaf35a7dd2bafd75",
+            measurementId: "G-VPX7KFZH6S"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+    // Add data to a new collection
+    async function createCollection() {
+        await addDoc(collection(db, "collections"), { 'collections':['block 1','block 2','block 3']});
+    }
+    let selectedOption = "block 2";
+
+    async function getArrayFromCollection() {
+        const docRef = doc(db, "collections", "lbMV7Ab4YCgXWG1jaPGj"); // Replace "your-doc-id" with the actual document ID
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const myArray = data.collections; // Replace "yourArrayField" with the actual array field name
+            return myArray;
+        } else {
+            console.log("No such document!");
+        }
+    }
+
+        async function getHomeworkData() {
+            const homeworkCollection = collection(db, selectedOption);
+            const homeworkSnapshot = await getDocs(homeworkCollection);
+            const homeworkList = document.getElementById("homework-list");
+            homeworkList.innerHTML = "";
+            homeworkSnapshot.forEach((doc) => {
+                const data = doc.data();
+                const row = document.createElement("tr");
+                row.classList.add("hover-effect");
+                row.innerHTML = `
+                    <td>${data.course}</td>
+                    <td>${data.content}</td>
+                    <td>${data.deadline}</td>
+                    <td>${data.marks}</td>
+                    <td><button class="edit-btn bg-blue-500 text-white px-2 py-1 rounded" data-id="${doc.id}">Edit</button></td>
+                    <td><button class="delete-btn bg-red-500 text-white px-2 py-1 rounded" data-id="${doc.id}">Delete</button></td>
+                `;
+                homeworkList.appendChild(row);
+            });
+            addEventListeners();
+        }
+
+        // Function to add event listeners to buttons
+        function addEventListeners() {
+            document.querySelectorAll(".edit-btn").forEach(button => {
+                button.addEventListener("click", async (e) => {
+                    const id = e.target.getAttribute("data-id");
+                    const docRef = doc(db, selectedOption, id);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        document.getElementById("course").value = data.course;
+                        document.getElementById("content").value = data.content;
+                        document.getElementById("deadline").value = data.deadline;
+                        document.getElementById("marks").value = data.marks;
+                        document.getElementById("homework-id").value = id;
+                        document.getElementById("modal").classList.remove("hidden");
+                        document.getElementById("modal").classList.add("modal-animation");
+                    }
+                });
+            });
+
+            document.querySelectorAll(".delete-btn").forEach(button => {
+                button.addEventListener("click", async (e) => {
+                    const id = e.target.getAttribute("data-id");
+                    await deleteDoc(doc(db, selectedOption, id));
+                    getHomeworkData();
+                });
+            });
+        }
+
+        // Function to add or update homework
+        async function saveHomework(e) {
+            e.preventDefault();
+            const course = document.getElementById("course").value;
+            const content = document.getElementById("content").value;
+            const deadline = document.getElementById("deadline").value;
+            const marks = document.getElementById("marks").value;
+            const id = document.getElementById("homework-id").value;
+
+            if (id) {
+                const docRef = doc(db, selectedOption, id);
+                await updateDoc(docRef, { course, content, deadline, marks });
+            } else {
+                await addDoc(collection(db, selectedOption), { course, content, deadline, marks });
+            }
+
+            document.getElementById("modal").classList.add("hidden");
+            getHomeworkData();
+        }
+
+        // Function to show snackbar with a random quote
+        function showSnackbar() {
+            const quotes = [
+                "Keep pushing forward!",
+                "Great job!",
+                "You're doing amazing!",
+                "Keep up the good work!",
+                "Success is just around the corner!"
+            ];
+            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+            const snackbar = document.getElementById("snackbar");
+            snackbar.classList.add("show");
+
+            setTimeout(() => {
+                snackbar.classList.remove("show");
+                snackbar.classList.add("hide");
+            }, 5000);
+
+            setTimeout(() => {
+                snackbar.classList.remove("hide");
+            }, 5500); // Reset after hiding
+        }
+    async function populateDropdown() {
+
+        const myArray = ['block 1','block 2','block 3','تنوع وإنصاف'];
+
+        const dropdownMenu = document.getElementById("dropdown-menu");
+        dropdownMenu.innerHTML = ""; // Clear previous content
+
+        myArray.forEach((item) => {
+            const option = document.createElement("option");
+            option.value = item;
+            option.textContent = item;
+
+            // Set "block 2" as the default selected option
+            if (item === "block 2") {
+                option.selected = true;
+            }
+
+            dropdownMenu.appendChild(option);
+        });
+        console.log('block 2')
+    }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            getHomeworkData();
+            populateDropdown();
+            document.getElementById("add-homework-btn").addEventListener("click", () => {
+                document.getElementById("modal").classList.remove("hidden");
+                document.getElementById("modal").classList.add("modal-animation");
+            });
+            document.getElementById("close-modal").addEventListener("click", () => {
+                document.getElementById("modal").classList.add("hidden");
+            });
+            document.getElementById("homework-form").addEventListener("submit", saveHomework);
+            debugger;
+            document.getElementById("dropdown-menu").addEventListener("change", (event) => {
+                selectedOption = event.target.value;
+                console.log("Selected option:", selectedOption);
+                getHomeworkData();
+            });
+        });
+        /*
+          <button id="dropdown-button">Show Dropdown</button>
+          <div id="dropdown-menu" style="display: none;"></div>
+        */
+    </script>
+</head>
+<!-------------------------------------------------------->
+<body class="bg-gray-900 p-4">
+    <div class="container mx-auto">
+        <h1 class="text-2xl font-bold mb-4">Homework Tracker</h1>
+        <br>
+        <button id="add-homework-btn" class="bg-green-500 text-white px-4 py-2 rounded mb-4">Add Homework</button>
+        <br>
+            <select id="dropdown-menu" class="absolute text-black mt-2 w-48 bg-white border border-gray-300 rounded shadow-lg">
+                <!-- Dropdown items will be dynamically added here -->
+            </select>
+        <br>
+        <br>
+
+        <table class="min-w-full bg-gray-800">
+            <thead>
+                <tr>
+                    <th class="py-2 px-4 border-b">Course</th>
+                    <th class="py-2 px-4 border-b">Content</th>
+                    <th class="py-2 px-4 border-b">Deadline</th>
+                    <th class="py-2 px-4 border-b">Marks</th>
+                    <th class="py-2 px-4 border-b">Edit</th>
+                    <th class="py-2 px-4 border-b">Delete</th>
+                </tr>
+            </thead>
+            <tbody id="homework-list">
+                <!-- Homework items will be inserted here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-gray-800 p-6 rounded-lg">
+            <h2 class="text-xl font-bold mb-4">Add/Edit Homework</h2>
+            <form id="homework-form">
+                <input type="hidden" id="homework-id">
+                <div class="mb-4">
+                    <label for="course" class="block text-sm font-medium text-gray-300">Course</label>
+                    <input type="text" id="course" class="mt-1 block w-full border-gray-600 rounded-md shadow-sm">
+                </div>
+                <div class="mb-4">
+                    <label for="content" class="block text-sm font-medium text-gray-300">Content</label>
+                    <input type="text" id="content" class="mt-1 block w-full border-gray-600 rounded-md shadow-sm">
+                </div>
+                <div class="mb-4">
+                    <div class="mb-4">
+                        <label for="deadline" class="block text-sm font-medium text-gray-300">Deadline</label>
+                        <input type="text" id="deadline" class="mt-1 block w-full border-gray-600 rounded-md shadow-sm">
+                    </div>
+                    <div class="mb-4">
+                        <label for="marks" class="block text-sm font-medium text-gray-300">Marks</label>
+                        <input type="text" id="marks" class="mt-1 block w-full border-gray-600 rounded-md shadow-sm">
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="button" id="close-modal"
+                            class="bg-gray-500 text-white px-4 py-2 rounded mr-2">Cancel</button>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
+                    </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Snackbar -->
+    <div id="snackbar" class="snackbar"></div>
+</body>
+
+</html>
